@@ -36,6 +36,18 @@ export function getUnityHubPath(platform: NodeJS.Platform = getPlatform()): stri
 }
 
 /**
+ * Get additional Unity installation paths to search (non-Hub installations)
+ */
+export function getAdditionalUnityPaths(platform: NodeJS.Platform = getPlatform()): string[] {
+  if (isWindows(platform)) {
+    return [
+      'C:\\Program Files\\Unity 2022.3.62f3'
+    ];
+  }
+  return [];
+}
+
+/**
  * Parse a Unity version string into components
  * Examples: "6000.1.12f1", "2022.3.20f1", "6000.0.0b1"
  */
@@ -84,6 +96,9 @@ export function getUnityExecutablePath(
  * Find all Unity installations on the system
  */
 export function findUnityInstalls(platform: NodeJS.Platform = getPlatform()): UnityInstall[] {
+  const installs: UnityInstall[] = [];
+
+  // Search Unity Hub path
   let hubPath: string;
   try {
     hubPath = getUnityHubPath(platform);
@@ -92,33 +107,63 @@ export function findUnityInstalls(platform: NodeJS.Platform = getPlatform()): Un
     return [];
   }
 
-  if (!fs.existsSync(hubPath)) {
-    return [];
+  if (fs.existsSync(hubPath)) {
+    const entries = fs.readdirSync(hubPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+
+      const version = entry.name;
+      const parsed = parseUnityVersion(version);
+      if (!parsed) continue;
+
+      const execPath = getUnityExecutablePath(version, platform);
+
+      // On Mac, check if the .app exists; on Windows, check if the .exe exists
+      const checkPath = isMac(platform)
+        ? path.join(hubPath, version, 'Unity.app')
+        : execPath;
+
+      if (fs.existsSync(checkPath)) {
+        installs.push({
+          version,
+          path: execPath,
+          isUnity6: isUnity6OrNewer(version)
+        });
+      }
+    }
   }
 
-  const installs: UnityInstall[] = [];
-  const entries = fs.readdirSync(hubPath, { withFileTypes: true });
+  // Search additional paths (non-Hub installations)
+  const additionalPaths = getAdditionalUnityPaths(platform);
+  for (const installPath of additionalPaths) {
+    if (!fs.existsSync(installPath)) continue;
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    // Extract version from path (e.g., "C:\Program Files\Unity 2022.3.62f3" -> "2022.3.62f3")
+    const pathBasename = path.basename(installPath);
+    const versionMatch = pathBasename.match(/(\d{4}\.\d+\.\d+[a-z]\d+)/);
 
-    const version = entry.name;
-    const parsed = parseUnityVersion(version);
-    if (!parsed) continue;
+    if (versionMatch) {
+      const version = versionMatch[1];
+      const parsed = parseUnityVersion(version);
+      if (!parsed) continue;
 
-    const execPath = getUnityExecutablePath(version, platform);
+      // Build executable path for non-Hub installation
+      const execPath = isMac(platform)
+        ? path.join(installPath, 'Unity.app', 'Contents', 'MacOS', 'Unity')
+        : path.join(installPath, 'Editor', 'Unity.exe');
 
-    // On Mac, check if the .app exists; on Windows, check if the .exe exists
-    const checkPath = isMac(platform)
-      ? path.join(hubPath, version, 'Unity.app')
-      : execPath;
+      const checkPath = isMac(platform)
+        ? path.join(installPath, 'Unity.app')
+        : execPath;
 
-    if (fs.existsSync(checkPath)) {
-      installs.push({
-        version,
-        path: execPath,
-        isUnity6: isUnity6OrNewer(version)
-      });
+      if (fs.existsSync(checkPath)) {
+        installs.push({
+          version,
+          path: execPath,
+          isUnity6: isUnity6OrNewer(version)
+        });
+      }
     }
   }
 

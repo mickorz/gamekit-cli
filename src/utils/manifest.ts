@@ -14,11 +14,48 @@ export function addMcpToManifest(manifestPath: string, unityVersion: string): vo
 
   const mcpUrl = getMcpPackageUrl(unityVersion);
 
-  // Only add MCP package if Unity version is supported
+  // Ensure dependencies object exists
+  manifest.dependencies = manifest.dependencies || {};
+
+  // Add MCP package if Unity version is supported
   if (mcpUrl) {
-    manifest.dependencies = manifest.dependencies || {};
     manifest.dependencies['com.codemaestroai.advancedunitymcp'] = mcpUrl;
   }
 
+  // Add essential Unity packages for game development
+  addEssentialPackages(manifest);
+
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+}
+
+/**
+ * Add essential Unity packages for game development
+ * These packages are commonly needed but may not be in all project templates
+ *
+ * @param manifest - The parsed manifest.json object
+ */
+function addEssentialPackages(manifest: { dependencies: Record<string, string> }): void {
+  // Unity UI (uGUI) - Required for Canvas, Text, Button, Slider, etc.
+  // Without this package, UI scripts will fail to compile
+  if (!manifest.dependencies['com.unity.ugui']) {
+    manifest.dependencies['com.unity.ugui'] = '1.0.0';
+  }
+
+  // TextMeshPro - Modern text rendering (optional but commonly used)
+  // Many Unity versions include this by default, but ensure it exists
+  if (!manifest.dependencies['com.unity.textmeshpro']) {
+    manifest.dependencies['com.unity.textmeshpro'] = '3.0.6';
+  }
+
+  // Input System - New input system for better control handling
+  // Required for some modern Unity projects
+  if (!manifest.dependencies['com.unity.inputsystem']) {
+    manifest.dependencies['com.unity.inputsystem'] = '1.7.0';
+  }
+
+  // Rider IDE Support - JetBrains Rider integration
+  // Provides better C# intellisense, debugging and refactoring support
+  if (!manifest.dependencies['com.unity.ide.rider']) {
+    manifest.dependencies['com.unity.ide.rider'] = '3.0.39';
+  }
 }
