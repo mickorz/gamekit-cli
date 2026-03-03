@@ -247,3 +247,52 @@ export function openUnityProject(unityPath: string, projectPath: string): void {
   // Unref so the CLI can exit while Unity runs
   child.unref();
 }
+
+/**
+ * Enable the new Input System in ProjectSettings
+ * Modifies ProjectSettings.asset to set activeInputHandler to 2 (Both)
+ *
+ * activeInputHandler values:
+ *   0 = Input Manager (Old)
+ *   1 = Input System Package (New)
+ *   2 = Both
+ *
+ * @param projectPath - Path to the Unity project
+ */
+export function enableNewInputSystem(projectPath: string): void {
+  const settingsPath = path.join(projectPath, 'ProjectSettings', 'ProjectSettings.asset');
+
+  if (!fs.existsSync(settingsPath)) {
+    return; // ProjectSettings not found, skip
+  }
+
+  let content = fs.readFileSync(settingsPath, 'utf-8');
+
+  // Check if activeInputHandler already exists
+  if (content.includes('activeInputHandler:')) {
+    // Replace existing value
+    content = content.replace(
+      /activeInputHandler:\s*\d+/,
+      'activeInputHandler: 2'
+    );
+  } else {
+    // Add activeInputHandler after the first PlayerSettings block
+    // Find a good insertion point (after serializedVersion line)
+    const lines = content.split('\n');
+    let insertIndex = -1;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('serializedVersion:')) {
+        insertIndex = i + 1;
+        break;
+      }
+    }
+
+    if (insertIndex > 0) {
+      lines.splice(insertIndex, 0, '  activeInputHandler: 2');
+      content = lines.join('\n');
+    }
+  }
+
+  fs.writeFileSync(settingsPath, content);
+}

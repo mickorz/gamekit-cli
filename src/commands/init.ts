@@ -8,7 +8,8 @@ import {
   createUnityProject,
   openUnityProject,
   isUnityProject,
-  UnityInstall
+  UnityInstall,
+  enableNewInputSystem
 } from '../utils/unity.js';
 import { copyTemplateAsync } from '../utils/template.js';
 import { addMcpToManifest } from '../utils/manifest.js';
@@ -116,6 +117,9 @@ async function initExistingProject(projectPath: string): Promise<void> {
     process.exit(1);
   }
 
+  // Step 2.5: Enable new Input System
+  enableNewInputSystem(projectPath);
+
   // Step 3: Generate .mcp.json
   spinner.start('Configuring MCP for Claude Code...');
   try {
@@ -219,6 +223,9 @@ async function createNewProject(): Promise<void> {
   try {
     await createUnityProject(selectedInstall.path, projectPath);
     spinner.succeed('Unity project created');
+
+    // Enable new Input System (Both mode)
+    enableNewInputSystem(projectPath);
   } catch (error) {
     spinner.fail('Failed to create Unity project');
     if (error instanceof Error) {
