@@ -53,4 +53,10 @@ function addEssentialPackages(manifest: { dependencies: Record<string, string> }
   if (!manifest.dependencies['com.unity.ide.rider']) {
     manifest.dependencies['com.unity.ide.rider'] = '3.0.39';
   }
+
+  // Test Framework - Unity Test Framework for unit and integration tests
+  // Required for running tests in Unity
+  if (!manifest.dependencies['com.unity.test-framework']) {
+    manifest.dependencies['com.unity.test-framework'] = '1.1.33';
+  }
 }
