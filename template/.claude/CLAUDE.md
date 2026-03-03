@@ -85,6 +85,7 @@ You can just describe what you want, but these explicit commands are available:
 
 | Command | What It Does |
 |---------|--------------|
+| `/super-game [description]` | Start a new game with full superpowers workflow (interactive brainstorming, two-stage reviews) |
 | `/new-game [description]` | Start a new game with full planning |
 | `/playtest` | Test the game and catch errors |
 | `/auto-test` | Automated testing without manual intervention |
@@ -99,6 +100,10 @@ You can just describe what you want, but these explicit commands are available:
 | `/convert-models` | Convert FBX/OBJ to runtime-ready prefabs |
 
 **Rollback limitations:** Can only undo changes from the current session. Deleted GameObjects or removed components cannot be fully restored. Use `/snapshot` before major changes for safety.
+
+**super-game vs new-game:**
+- `/new-game` - Fast prototyping, direct execution, single quality gate
+- `/super-game` - Rigorous development, interactive brainstorming, two-stage reviews per task
 
 ## Project Structure
 
