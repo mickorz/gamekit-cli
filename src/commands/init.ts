@@ -7,13 +7,13 @@ import {
   findUnityInstalls,
   createUnityProject,
   openUnityProject,
-  getMcpPackageUrl,
   isUnityProject,
   UnityInstall
 } from '../utils/unity.js';
 import { copyTemplateAsync } from '../utils/template.js';
 import { addMcpToManifest } from '../utils/manifest.js';
-import { generateMcpConfig, waitForMcpRelay, mcpRelayExists } from '../utils/mcp.js';
+import { generateMcpConfig, emberMcpExists } from '../utils/mcp.js';
+import { EMBER_MCP_PATH } from '../utils/platform.js';
 import { createEditorScripts } from '../utils/assets.js';
 
 /**
@@ -99,23 +99,17 @@ async function initExistingProject(projectPath: string): Promise<void> {
   }
 
   // Step 2: Add MCP package to manifest.json
-  spinner.start('Adding MCP package to project...');
+  spinner.start('Adding ember-mcp package to project...');
   try {
     const manifestPath = path.join(projectPath, 'Packages', 'manifest.json');
     if (fs.existsSync(manifestPath)) {
-      const mcpUrl = getMcpPackageUrl(unityVersion);
-      if (mcpUrl) {
-        addMcpToManifest(manifestPath, unityVersion);
-        spinner.succeed('MCP package added');
-      } else {
-        spinner.warn('MCP package not added (Unity version not supported)');
-        console.log(chalk.yellow('   Unity 2019 and older are not supported for MCP integration.\n'));
-      }
+      addMcpToManifest(manifestPath, unityVersion);
+      spinner.succeed('ember-mcp package added');
     } else {
       spinner.warn('manifest.json not found');
     }
   } catch (error) {
-    spinner.fail('Failed to add MCP package');
+    spinner.fail('Failed to add ember-mcp package');
     if (error instanceof Error) {
       console.log(chalk.red(`Error: ${error.message}`));
     }
@@ -135,29 +129,22 @@ async function initExistingProject(projectPath: string): Promise<void> {
     process.exit(1);
   }
 
-  // Check if MCP relay already exists (user may have used this before)
-  if (mcpRelayExists()) {
-    console.log(chalk.green(`
-╔════════════════════════════════════════╗
-║       ✓ Project Initialized!           ║
-╚════════════════════════════════════════╝
+  console.log(chalk.green(`
++------------------------------------------+
+|       ✓ Project Initialized!            |
++------------------------------------------+
 `));
-    console.log(chalk.blue('Ready to go!\n'));
-    console.log(chalk.white(`  1. ${chalk.cyan('Restart Unity')}`));
-    console.log(chalk.gray('     To load the new MCP package\n'));
-    console.log(chalk.white(`  2. ${chalk.cyan('claude')}`));
-    console.log(chalk.gray('     Start building with AI!\n'));
-  } else {
-    console.log(chalk.green(`
-╔════════════════════════════════════════╗
-║       ✓ Project Initialized!           ║
-╚════════════════════════════════════════╝
-`));
-    console.log(chalk.blue('Next steps:\n'));
-    console.log(chalk.white(`  1. ${chalk.cyan('Restart Unity')}`));
-    console.log(chalk.gray('     To load the new MCP package\n'));
-    console.log(chalk.white(`  2. ${chalk.cyan('claude')}`));
-    console.log(chalk.gray('     Start building with AI!\n'));
+  console.log(chalk.blue('Next steps:\n'));
+  console.log(chalk.white(`  1. ${chalk.cyan('Ensure ember-mcp gateway is running')}`));
+  console.log(chalk.gray('     cd D:/NodejsP/ember-mcp && npm start\n'));
+  console.log(chalk.white(`  2. ${chalk.cyan('Restart Unity')}`));
+  console.log(chalk.gray('     To load the ember-mcp package\n'));
+  console.log(chalk.white(`  3. ${chalk.cyan('claude')}`));
+  console.log(chalk.gray('     Start building with AI!\n'));
+
+  if (!emberMcpExists()) {
+    console.log(chalk.yellow('Warning: ember-mcp gateway not found at ' + EMBER_MCP_PATH));
+    console.log(chalk.gray('  Run "npm run build" in ember-mcp directory first.\n'));
   }
 
   console.log(chalk.gray('─'.repeat(44)));
@@ -256,23 +243,17 @@ async function createNewProject(): Promise<void> {
   }
 
   // Step 5: Add MCP package to Unity's manifest.json
-  spinner.start('Adding MCP package to project...');
+  spinner.start('Adding ember-mcp package to project...');
   try {
     const manifestPath = path.join(projectPath, 'Packages', 'manifest.json');
     if (fs.existsSync(manifestPath)) {
-      const mcpUrl = getMcpPackageUrl(answers.unityVersion);
-      if (mcpUrl) {
-        addMcpToManifest(manifestPath, answers.unityVersion);
-        spinner.succeed('MCP package added');
-      } else {
-        spinner.warn('MCP package not added (Unity version not supported)');
-        console.log(chalk.yellow('   Unity 2019 and older are not supported for MCP integration.\n'));
-      }
+      addMcpToManifest(manifestPath, answers.unityVersion);
+      spinner.succeed('ember-mcp package added');
     } else {
       spinner.warn('manifest.json not found');
     }
   } catch (error) {
-    spinner.fail('Failed to add MCP package');
+    spinner.fail('Failed to add ember-mcp package');
     if (error instanceof Error) {
       console.log(chalk.red(`Error: ${error.message}`));
     }
@@ -302,36 +283,34 @@ async function createNewProject(): Promise<void> {
     console.log(chalk.gray('  Please open the project manually in Unity Hub.\n'));
   }
 
-  // Step 8: Wait for MCP relay to be installed
-  console.log(chalk.gray('\n  Unity is installing packages. This usually takes 1-2 minutes.\n'));
-  const mcpReady = await waitForMcpRelay({ timeoutMs: 5 * 60 * 1000 });
+  // Step 8: Check ember-mcp gateway and show final instructions
+  const gatewayExists = emberMcpExists();
 
   // Success!
   console.log(chalk.green(`
-╔════════════════════════════════════════╗
-║         ✓ Project Created!             ║
-╚════════════════════════════════════════╝
++------------------------------------------+
+|         ✓ Project Created!              |
++------------------------------------------+
 `));
 
   const cdCmd = `cd ${projectName}`;
 
-  if (mcpReady) {
-    console.log(chalk.blue('Next steps:\n'));
-    console.log(chalk.white(`  1. ${chalk.cyan(cdCmd)}`));
-    console.log(chalk.gray('     Navigate to your project\n'));
-    console.log(chalk.white(`  2. ${chalk.green('✓')} ${chalk.cyan('Wait for Unity to finish loading')}`));
-    console.log(chalk.gray('     Packages installed automatically\n'));
-    console.log(chalk.white(`  3. ${chalk.cyan('claude')}`));
-    console.log(chalk.gray('     Start building with AI!\n'));
+  console.log(chalk.blue('Next steps:\n'));
+  console.log(chalk.white(`  1. ${chalk.cyan(cdCmd)}`));
+  console.log(chalk.gray('     Navigate to your project\n'));
+
+  if (gatewayExists) {
+    console.log(chalk.white(`  2. ${chalk.green('✓')} ${chalk.cyan('ember-mcp gateway is ready')}`));
+    console.log(chalk.gray('     Gateway found at configured location\n'));
   } else {
-    console.log(chalk.blue('Next steps:\n'));
-    console.log(chalk.white(`  1. ${chalk.cyan(cdCmd)}`));
-    console.log(chalk.gray('     Navigate to your project\n'));
-    console.log(chalk.white(`  2. ${chalk.cyan('Wait for Unity to finish loading')}`));
-    console.log(chalk.gray('     Packages will install automatically (~1-2 min)\n'));
-    console.log(chalk.white(`  3. ${chalk.cyan('claude')}`));
-    console.log(chalk.gray('     Start building with AI!\n'));
+    console.log(chalk.white(`  2. ${chalk.cyan('Build and start ember-mcp gateway')}`));
+    console.log(chalk.gray('     cd D:/NodejsP/ember-mcp && npm run build && npm start\n'));
   }
+
+  console.log(chalk.white(`  3. ${chalk.cyan('Wait for Unity to finish loading')}`));
+  console.log(chalk.gray('     ember-mcp Unity package will auto-register\n'));
+  console.log(chalk.white(`  4. ${chalk.cyan('claude')}`));
+  console.log(chalk.gray('     Start building with AI!\n'));
 
   console.log(chalk.gray('─'.repeat(44)));
   console.log(chalk.gray('\nTip: Use /new-game to start building!'));

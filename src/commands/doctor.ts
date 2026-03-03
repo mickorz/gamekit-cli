@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import * as fs from 'fs';
-import { hasMcpConfig, mcpRelayExists } from '../utils/mcp.js';
+import { hasMcpConfig, emberMcpExists } from '../utils/mcp.js';
 import { hasClaudeCommands } from '../utils/commands.js';
 import { findUnityInstalls } from '../utils/unity.js';
 
@@ -19,7 +19,7 @@ export async function runDoctor(): Promise<void> {
     checkUnityProject(),
     checkClaudeCommands(),
     checkMcpConfig(),
-    checkMcpRelay(),
+    checkMcpGateway(),
   ];
 
   let allPassed = true;
@@ -101,18 +101,18 @@ function checkMcpConfig(): CheckResult {
   };
 }
 
-function checkMcpRelay(): CheckResult {
-  const relayExists = mcpRelayExists();
-  if (relayExists) {
+function checkMcpGateway(): CheckResult {
+  const gatewayExists = emberMcpExists();
+  if (gatewayExists) {
     return {
-      name: 'MCP relay installed',
-      passed: true
+      name: 'ember-mcp gateway installed',
+      passed: true,
+      message: 'Gateway found at D:/NodejsP/ember-mcp/dist/index.js'
     };
   }
   return {
-    name: 'MCP relay installed',
+    name: 'ember-mcp gateway installed',
     passed: false,
-    // No fix - this is a warning since it installs when Unity opens
-    message: 'Opens Unity to install packages (relay installs automatically)'
+    fix: 'Run "npm run build" in D:/NodejsP/ember-mcp directory'
   };
 }

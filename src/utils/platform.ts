@@ -30,33 +30,7 @@ export function getHomeDir(): string {
 }
 
 /**
- * Get the path to the Unity MCP relay launch script
- * This script is installed by the advanced-unity-mcp Unity package
- *
- * @param platform - Override platform for testing
- * @param homeDir - Override home directory for testing
- * @param localAppData - Override LOCALAPPDATA for testing (Windows)
+ * Get the path to the ember-mcp gateway entry file
+ * This is the compiled JavaScript file that Claude Code runs as an MCP server
  */
-export function getMcpRelayPath(
-  platform: NodeJS.Platform = getPlatform(),
-  homeDir: string = getHomeDir(),
-  localAppData: string = process.env.LOCALAPPDATA || ''
-): string {
-  if (isMac(platform)) {
-    return path.join(
-      homeDir,
-      'Library/Application Support/CodeMaestro/UnityMcpRelay/launch.sh'
-    );
-  } else if (isWindows(platform)) {
-    // Windows uses LOCALAPPDATA (not APPDATA/Roaming)
-    return path.join(
-      localAppData,
-      'Programs',
-      'CodeMaestro',
-      'UnityMcpRelay',
-      'launch.bat'
-    );
-  }
-
-  throw new Error('Unsupported platform: only macOS and Windows are supported');
-}
+export const EMBER_MCP_PATH = 'D:/NodejsP/ember-mcp/dist/index.js';
