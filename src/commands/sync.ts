@@ -2,14 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import chalk from 'chalk';
 import ora from 'ora';
-import { ensureTemplate, getTemplatePath, writeCommandsVersion,
-  writeHashes,
-  getFilesRecursive } from '../utils/template.js';
+import { ensureTemplate, writeCommandsVersion, writeHashes } from '../utils/template.js';
 import { isUnityProject } from '../utils/unity.js';
 import { getCurrentVersion } from '../utils/updater.js';
 
 /**
- * Recursively copy a directory (same as copyDirectorySync but exported)
+ * Recursively copy a directory
  */
 function copyDirectory(src: string, dest: string): void {
   fs.mkdirSync(dest, { recursive: true });
@@ -21,12 +19,13 @@ function copyDirectory(src: string, dest: string): void {
     // Skip symlinks for security
     if (entry.isSymbolicLink()) {
       continue;
-  }
+    }
 
-  if (entry.isDirectory()) {
-    copyDirectory(srcPath, destPath);
+    if (entry.isDirectory()) {
+      copyDirectory(srcPath, destPath);
   } else {
     fs.copyFileSync(srcPath, destPath);
+  }
   }
 }
 
@@ -92,8 +91,8 @@ export async function sync(projectPath?: string): Promise<void> {
   } catch (error) {
     spinner.fail('Sync failed');
     if (error instanceof Error) {
-    console.log(chalk.red(`Error: ${error.message}`));
-  }
-  process.exit(1);
+      console.log(chalk.red(`Error: ${error.message}`));
+    }
+    process.exit(1);
   }
 }
