@@ -86,6 +86,7 @@ You can just describe what you want, but these explicit commands are available:
 | Command | What It Does |
 |---------|--------------|
 | `/super-game [description]` | Start a new game with full superpowers workflow (interactive brainstorming, two-stage reviews) |
+| `/super-sync` | Sync latest commands and skills from emberai-cli |
 | `/new-game [description]` | Start a new game with full planning |
 | `/playtest` | Test the game and catch errors |
 | `/auto-test` | Automated testing without manual intervention |
