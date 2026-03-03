@@ -33,7 +33,8 @@ function copyDirectory(src: string, dest: string): void {
  * Sync the latest commands, skills, and agents to a project
  */
 export async function sync(projectPath?: string): Promise<void> {
-  const destPath = projectPath || process.cwd();
+  // Handle case where Commander.js passes an empty object
+  const destPath = (typeof projectPath === 'string' && projectPath) ? projectPath : process.cwd();
 
   // Validate we're in a Unity project
   if (!isUnityProject(destPath)) {
