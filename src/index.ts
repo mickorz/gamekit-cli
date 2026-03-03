@@ -9,7 +9,7 @@ import { maybeCheckForUpdates, getCurrentVersion, checkForAppliedUpdate } from '
 // Check if an update was applied in the background
 const updatedVersion = checkForAppliedUpdate();
 if (updatedVersion) {
-  console.log(chalk.green(`✓ Updated to gamekit v${updatedVersion}\n`));
+  console.log(chalk.green(`Updated to emberai v${updatedVersion}\n`));
 }
 
 // Check for updates in background (non-blocking)
@@ -18,7 +18,7 @@ maybeCheckForUpdates();
 const program = new Command();
 
 program
-  .name('gamekit')
+  .name('emberai')
   .description('AI-powered Unity game development with Claude');
 
 // Version command
@@ -44,8 +44,8 @@ program
 // Show error for unknown commands
 program.on('command:*', (operands) => {
   console.error(chalk.red(`Unknown command: ${operands[0]}`));
-  console.error(`Run ${chalk.cyan('gamekit --help')} to see available commands.`);
-  console.error(`Run ${chalk.cyan('gamekit init')} to initialize a new project or add gamekit to an existing one.`);
+  console.error(`Run ${chalk.cyan('emberai --help')} to see available commands.`);
+  console.error(`Run ${chalk.cyan('emberai init')} to initialize a new project or add emberai to an existing one.`);
   process.exit(1);
 });
 

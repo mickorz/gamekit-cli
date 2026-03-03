@@ -10,7 +10,7 @@ import { getCurrentVersion, compareVersions } from './updater.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // GitHub repo for downloading template
-const GITHUB_REPO = 'gamekit-agent/gamekit-cli';
+const GITHUB_REPO = 'emberai-dev/emberai-cli';
 const TEMPLATE_BRANCH = 'main';
 
 /**
@@ -18,7 +18,7 @@ const TEMPLATE_BRANCH = 'main';
  */
 function getCachedTemplatePath(): string {
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  return path.join(home, '.gamekit', 'template');
+  return path.join(home, '.emberai', 'template');
 }
 
 /**
@@ -38,7 +38,7 @@ export function getTemplatePath(): string {
   }
 
   throw new Error(
-    `Template not found. Run 'gamekit install-commands' first or check your installation.`
+    `Template not found. Run 'emberai init' first or check your installation.`
   );
 }
 
@@ -48,7 +48,7 @@ export function getTemplatePath(): string {
 function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const options = {
-      headers: { 'User-Agent': 'gamekit' }
+      headers: { 'User-Agent': 'emberai' }
     };
 
     https.get(url, options, (res) => {
@@ -81,7 +81,7 @@ function downloadFile(url: string, dest: string): Promise<void> {
  */
 export async function downloadTemplate(): Promise<string> {
   const cachedPath = getCachedTemplatePath();
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gamekit-template-'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'emberai-template-'));
   const tarballPath = path.join(tempDir, 'template.tar.gz');
 
   try {
@@ -95,7 +95,7 @@ export async function downloadTemplate(): Promise<string> {
 
     // Find the extracted directory (it will be named like repo-branch)
     const extractedDir = fs.readdirSync(tempDir).find(f =>
-      f.startsWith('gamekit-cli-') && fs.statSync(path.join(tempDir, f)).isDirectory()
+      f.startsWith('emberai-cli-') && fs.statSync(path.join(tempDir, f)).isDirectory()
     );
 
     if (!extractedDir) {

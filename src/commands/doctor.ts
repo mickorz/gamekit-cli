@@ -12,7 +12,7 @@ export interface CheckResult {
 }
 
 export async function runDoctor(): Promise<void> {
-  console.log(chalk.blue('\n🔍 Diagnosing gamekit setup...\n'));
+  console.log(chalk.blue('\n Diagnosing EmberAI setup...\n'));
 
   const checks = [
     checkUnityInstalled(),
@@ -79,7 +79,7 @@ function checkUnityProject(): CheckResult {
   return {
     name: 'Unity project',
     passed: isUnityProject,
-    fix: isUnityProject ? undefined : 'Run from inside a Unity project, or run: gamekit init'
+    fix: isUnityProject ? undefined : 'Run from inside a Unity project, or run: emberai init'
   };
 }
 
@@ -88,7 +88,7 @@ function checkClaudeCommands(): CheckResult {
   return {
     name: 'Claude commands installed',
     passed: hasCommands,
-    fix: hasCommands ? undefined : 'Run: gamekit init'
+    fix: hasCommands ? undefined : 'Run: emberai init'
   };
 }
 
@@ -97,7 +97,7 @@ function checkMcpConfig(): CheckResult {
   return {
     name: 'MCP configured (.mcp.json)',
     passed: hasConfig,
-    fix: hasConfig ? undefined : 'Run: gamekit init'
+    fix: hasConfig ? undefined : 'Run: emberai init'
   };
 }
 

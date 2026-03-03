@@ -9,17 +9,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // GitHub repo for releases
-const GITHUB_REPO = 'gamekit-agent/gamekit-cli';
+const GITHUB_REPO = 'emberai-dev/emberai-cli';
 
 // Version injected at build time (see scripts/inject-version.ts)
 import { VERSION } from '../version.js';
 
 /**
- * Get the path to the gamekit config directory (~/.gamekit)
+ * Get the path to the emberai config directory (~/.emberai)
  */
 export function getConfigDir(): string {
   const home = process.env.HOME || process.env.USERPROFILE || '';
-  const configDir = path.join(home, '.gamekit');
+  const configDir = path.join(home, '.emberai');
 
   if (!fs.existsSync(configDir)) {
     fs.mkdirSync(configDir, { recursive: true });
@@ -33,9 +33,9 @@ export function getConfigDir(): string {
  */
 export function getInstallDir(): string {
   if (process.platform === 'win32') {
-    return path.join(process.env.LOCALAPPDATA || '', 'gamekit', 'bin');
+    return path.join(process.env.LOCALAPPDATA || '', 'emberai', 'bin');
   }
-  return path.join(os.homedir(), '.gamekit', 'bin');
+  return path.join(os.homedir(), '.emberai', 'bin');
 }
 
 /**
@@ -54,7 +54,7 @@ export function getBinaryName(): string {
   const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
   const ext = process.platform === 'win32' ? '.exe' : '';
 
-  return `gamekit-${platform}-${arch}${ext}`;
+  return `emberai-${platform}-${arch}${ext}`;
 }
 
 /**
@@ -64,7 +64,7 @@ function fetchJson(url: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const options = {
       headers: {
-        'User-Agent': 'gamekit-updater'
+        'User-Agent': 'emberai-updater'
       }
     };
 
@@ -179,7 +179,7 @@ export function checkForUpdatesInBackground(): void {
     function fetchJson(url) {
       return new Promise((resolve, reject) => {
         const options = {
-          headers: { 'User-Agent': 'gamekit-updater' }
+          headers: { 'User-Agent': 'emberai-updater' }
         };
         https.get(url, options, (res) => {
           if (res.statusCode === 301 || res.statusCode === 302) {
@@ -199,7 +199,7 @@ export function checkForUpdatesInBackground(): void {
     function downloadFile(url, dest) {
       return new Promise((resolve, reject) => {
         const options = {
-          headers: { 'User-Agent': 'gamekit-updater' }
+          headers: { 'User-Agent': 'emberai-updater' }
         };
         https.get(url, options, (res) => {
           if (res.statusCode === 301 || res.statusCode === 302) {
@@ -250,7 +250,7 @@ export function checkForUpdatesInBackground(): void {
           }
 
           // Download to temp location
-          const tempPath = path.join(os.tmpdir(), 'gamekit-update-' + Date.now());
+          const tempPath = path.join(os.tmpdir(), 'emberai-update-' + Date.now());
           log('Downloading from ' + asset.browser_download_url);
           await downloadFile(asset.browser_download_url, tempPath);
 
@@ -265,7 +265,7 @@ export function checkForUpdatesInBackground(): void {
           }
 
           // Move to install location
-          const targetPath = path.join(installDir, process.platform === 'win32' ? 'gamekit.exe' : 'gamekit');
+          const targetPath = path.join(installDir, process.platform === 'win32' ? 'emberai.exe' : 'emberai');
 
           // On Windows, rename old binary first (can't overwrite running exe)
           if (process.platform === 'win32' && fs.existsSync(targetPath)) {
@@ -360,7 +360,7 @@ export function checkForAppliedUpdate(): string | null {
  */
 export function maybeCheckForUpdates(): void {
   // Skip update checks in development
-  if (process.env.GAMEKIT_NO_UPDATE_CHECK) {
+  if (process.env.EMBERAI_NO_UPDATE_CHECK) {
     return;
   }
 

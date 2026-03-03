@@ -1,11 +1,11 @@
 {
-  "name": "gamekit-cli",
-  "version": "0.0.2",
+  "name": "emberai-cli",
+  "version": "0.0.1",
   "description": "AI-powered Unity game development with Claude",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "gamekit": "./dist/index.js"
+    "emberai": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -13,12 +13,13 @@
   ],
   "scripts": {
     "build": "tsc",
+    "build:watch": "tsc --watch",
     "version:inject": "bun scripts/inject-version.ts",
     "build:binary": "bun run version:inject && bun run build:darwin-arm64 && bun run build:darwin-x64 && bun run build:linux-x64 && bun run build:windows-x64",
-    "build:darwin-arm64": "bun build --compile --target=bun-darwin-arm64 --minify ./src/index.ts --outfile dist/gamekit-darwin-arm64",
-    "build:darwin-x64": "bun build --compile --target=bun-darwin-x64 --minify ./src/index.ts --outfile dist/gamekit-darwin-x64",
-    "build:linux-x64": "bun build --compile --target=bun-linux-x64 --minify ./src/index.ts --outfile dist/gamekit-linux-x64",
-    "build:windows-x64": "bun build --compile --target=bun-windows-x64 --minify ./src/index.ts --outfile dist/gamekit-windows-x64.exe",
+    "build:darwin-arm64": "bun build --compile --target=bun-darwin-arm64 --minify ./src/index.ts --outfile dist/emberai-darwin-arm64",
+    "build:darwin-x64": "bun build --compile --target=bun-darwin-x64 --minify ./src/index.ts --outfile dist/emberai-darwin-x64",
+    "build:linux-x64": "bun build --compile --target=bun-linux-x64 --minify ./src/index.ts --outfile dist/emberai-linux-x64",
+    "build:windows-x64": "bun build --compile --target=bun-windows-x64 --minify ./src/index.ts --outfile dist/emberai-windows-x64.exe",
     "dev": "bun run src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest"

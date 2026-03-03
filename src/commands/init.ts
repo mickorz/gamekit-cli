@@ -29,7 +29,7 @@ export function isValidProjectName(name: string): boolean {
 async function initExistingProject(projectPath: string): Promise<void> {
   console.log(chalk.blue(`
 ╔════════════════════════════════════════╗
-║    🎮 gamekit - Initialize Project     ║
+║    🎮 EmberAI - Initialize Project     ║
 ║   Adding Claude Code to your project   ║
 ╚════════════════════════════════════════╝
 `));
@@ -171,7 +171,7 @@ async function initExistingProject(projectPath: string): Promise<void> {
 async function createNewProject(): Promise<void> {
   console.log(chalk.blue(`
 ╔════════════════════════════════════════╗
-║       🎮 gamekit - Create Game         ║
+║       🎮 EmberAI - Create Game         ║
 ║   AI-powered Unity game development    ║
 ╚════════════════════════════════════════╝
 `));
