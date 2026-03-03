@@ -5,10 +5,6 @@ import chalk from 'chalk';
 import { init } from './commands/init.js';
 import { runDoctor } from './commands/doctor.js';
 import { sync } from './commands/sync.js';
-import { sync } from './commands/sync.js';
-import { sync } from './commands/sync.js';
-import { sync } from './commands/sync.js';
-import { sync } from './commands/sync.js';
 import { maybeCheckForUpdates, getCurrentVersion, checkForAppliedUpdate } from './utils/updater.js';
 
 // Check if an update was applied in the background
@@ -45,12 +41,6 @@ program
   .command('doctor')
   .description('Diagnose setup issues and check configuration')
   .action(runDoctor);
-
-// Sync - update commands and skills
-program
-  .command('sync')
-  .description('Sync latest commands and skills from emberai-cli')
-  .action(sync);
 
 // Sync - update commands and skills
 program
