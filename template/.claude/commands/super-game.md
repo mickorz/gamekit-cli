@@ -8,6 +8,18 @@ Create a new game using the complete superpowers development workflow.
 
 **User's game idea:** $ARGUMENTS
 
+## CRITICAL: Execute All Phases
+
+**This command MUST execute ALL 6 phases sequentially without stopping.**
+
+- After Phase 1 completes -> IMMEDIATELY start Phase 2
+- After Phase 2 completes -> IMMEDIATELY start Phase 3
+- After Phase 3 completes -> IMMEDIATELY start Phase 4
+- After Phase 4 completes -> IMMEDIATELY start Phase 5
+- After Phase 5 completes -> IMMEDIATELY start Phase 6
+
+**DO NOT STOP until all 6 phases are complete.**
+
 ## Workflow Overview
 
 This command integrates superpowers skills for a rigorous development process:
@@ -40,6 +52,8 @@ Invoke **superpowers:brainstorming** skill to explore the game idea:
 
 **Output:** Clear understanding of game vision with user approval
 
+**[Phase 1 COMPLETE -> NOW START PHASE 2]**
+
 ### Phase 2: Game Design (game-planner)
 
 Invoke **game-planner** agent with the clarified requirements:
@@ -53,6 +67,8 @@ The agent will create `Assets/_Game/Docs/GAME_DESIGN.md` with:
 
 **Output:** `Assets/_Game/Docs/GAME_DESIGN.md`
 
+**[Phase 2 COMPLETE -> NOW START PHASE 3]**
+
 ### Phase 3: Implementation Plan (writing-plans)
 
 Invoke **superpowers:writing-plans** skill to convert the game design:
@@ -65,6 +81,8 @@ Invoke **superpowers:writing-plans** skill to convert the game design:
 4. Save plan to `docs/plans/YYYY-MM-DD-<game-name>.md`
 
 **Output:** Detailed implementation plan with task classification
+
+**[Phase 3 COMPLETE -> NOW START PHASE 4]**
 
 ### Phase 4: Asset Acquisition (asset-finder)
 
@@ -85,6 +103,8 @@ Create a single Task for download/import with review:
 5. Run spec compliance review on imported assets
 
 **Output:** Assets organized in `Assets/Downloaded/` and prefabs in `Resources/Prefabs/`
+
+**[Phase 4 COMPLETE -> NOW START PHASE 5]**
 
 ### Phase 5: Implementation (subagent-driven-development)
 
@@ -113,6 +133,8 @@ Invoke **superpowers:subagent-driven-development** skill:
 **If review fails:** Implementer fixes -> Reviewer re-reviews -> Loop until pass
 
 **Output:** Fully implemented game matching the design
+
+**[Phase 5 COMPLETE -> NOW START PHASE 6]**
 
 ### Phase 6: Completion (finishing-a-development-branch)
 
