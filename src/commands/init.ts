@@ -15,6 +15,9 @@ import { copyTemplateAsync } from '../utils/template.js';
 import { addMcpToManifest } from '../utils/manifest.js';
 import { generateMcpConfig, emberMcpExists } from '../utils/mcp.js';
 import { EMBER_MCP_PATH } from '../utils/platform.js';
+
+// 提取 ember-mcp 目录路径，用于错误提示
+const EMBER_MCP_DIR = path.dirname(EMBER_MCP_PATH);
 import { createEditorScripts } from '../utils/assets.js';
 import {
   executeUnityBatchSetup,
@@ -94,7 +97,7 @@ async function executeEmberSetupSteps(
     if (error instanceof Error) {
       console.log(chalk.red(`Error: ${error.message}`));
       console.log(chalk.gray('\nMake sure ember-mcp service is running.'));
-      console.log(chalk.gray('Run: cd D:/NodejsP/ember-mcp && npm start'));
+      console.log(chalk.gray(`Run: cd ${EMBER_MCP_DIR} && npm start`));
     }
     process.exit(1);
   }
@@ -111,7 +114,7 @@ function showSetupErrorHelp(step: string): void {
   switch (step) {
     case 'connect':
       console.log(chalk.gray('  1. ember-mcp service is running'));
-      console.log(chalk.gray('     cd D:/NodejsP/ember-mcp && npm start'));
+      console.log(chalk.gray(`     cd ${EMBER_MCP_DIR} && npm start`));
       console.log(chalk.gray('  2. Port 8513 is not blocked by firewall'));
       console.log(chalk.gray('  3. Unity project is valid'));
       break;
@@ -239,17 +242,15 @@ async function initExistingProject(projectPath: string): Promise<void> {
     process.exit(1);
   }
 
-  // Step 4: Execute Ember setup (connect, generate, install)
-  await executeEmberSetupSteps(
-    installs.find((i: UnityInstall) => i.version === unityVersion)!.path,
-    projectPath,
-    spinner
-  );
+  // Step 4: Extract selected Unity install (used in multiple steps)
+  const selectedInstall = installs.find((i: UnityInstall) => i.version === unityVersion)!;
 
-  // Step 5: Open Unity editor
+  // Step 5: Execute Ember setup (connect, generate, install)
+  await executeEmberSetupSteps(selectedInstall.path, projectPath, spinner);
+
+  // Step 6: Open Unity editor
   spinner.start('Opening Unity...');
   try {
-    const selectedInstall = installs.find((i: UnityInstall) => i.version === unityVersion)!;
     openUnityProject(selectedInstall.path, projectPath);
     spinner.succeed('Unity is opening');
   } catch (error) {
@@ -432,7 +433,7 @@ async function createNewProject(): Promise<void> {
     console.log(chalk.gray('     Gateway found at configured location\n'));
   } else {
     console.log(chalk.white(`  2. ${chalk.cyan('Build and start ember-mcp gateway')}`));
-    console.log(chalk.gray('     cd D:/NodejsP/ember-mcp && npm run build && npm start\n'));
+    console.log(chalk.gray(`     cd ${EMBER_MCP_DIR} && npm run build && npm start\n`));
   }
 
   console.log(chalk.white(`  3. ${chalk.cyan('Wait for Unity to finish loading')}`));
