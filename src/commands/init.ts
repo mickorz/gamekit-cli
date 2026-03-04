@@ -1,6 +1,6 @@
 import inquirer from 'inquirer';
 import chalk from 'chalk';
-import ora from 'ora';
+import ora, { Ora } from 'ora';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
@@ -16,12 +16,118 @@ import { addMcpToManifest } from '../utils/manifest.js';
 import { generateMcpConfig, emberMcpExists } from '../utils/mcp.js';
 import { EMBER_MCP_PATH } from '../utils/platform.js';
 import { createEditorScripts } from '../utils/assets.js';
+import {
+  executeUnityBatchSetup,
+  verifyCompileCheck,
+  waitForCompilation,
+  formatCompileErrors,
+  EmberSetupError
+} from '../utils/ember-setup.js';
 
 /**
  * Validate project name to prevent path traversal
  */
 export function isValidProjectName(name: string): boolean {
   return /^[a-zA-Z0-9_-]+$/.test(name);
+}
+
+/**
+ * 执行 Ember 设置步骤（连接、生成、安装、验证）
+ *
+ * @param unityPath - Unity 可执行文件路径
+ * @param projectPath - Unity 项目路径
+ * @param spinner - ora spinner 实例
+ */
+async function executeEmberSetupSteps(
+  unityPath: string,
+  projectPath: string,
+  spinner: Ora
+): Promise<void> {
+  // Step 1: 执行 Unity 批处理设置
+  spinner.start('Setting up Ember MCP...');
+  try {
+    const result = await executeUnityBatchSetup(unityPath, projectPath);
+
+    if (!result.success) {
+      spinner.fail(`Setup failed at step: ${result.step}`);
+      console.log(chalk.red(`Error: ${result.error || result.message}`));
+      showSetupErrorHelp(result.step);
+      process.exit(1);
+    }
+
+    spinner.succeed('Ember MCP setup completed');
+  } catch (error) {
+    spinner.fail('Failed to execute Ember setup');
+    if (error instanceof EmberSetupError) {
+      console.log(chalk.red(`Error at ${error.step}: ${error.message}`));
+      if (error.details) {
+        console.log(chalk.gray(error.details));
+      }
+    } else if (error instanceof Error) {
+      console.log(chalk.red(`Error: ${error.message}`));
+    }
+    process.exit(1);
+  }
+
+  // Step 2: 验证编译
+  spinner.start('Verifying compilation...');
+  try {
+    // 先检查编译状态
+    let checkResult = await verifyCompileCheck();
+
+    // 如果正在编译，等待完成
+    if (checkResult.isCompiling) {
+      spinner.text = 'Unity is compiling, waiting...';
+      checkResult = await waitForCompilation();
+    }
+
+    if (!checkResult.success || checkResult.errorCount > 0) {
+      spinner.fail('Compilation check failed');
+      console.log(chalk.red(`\n${formatCompileErrors(checkResult)}`));
+      console.log(chalk.yellow('\nPlease fix these errors and run: emberai init'));
+      process.exit(1);
+    }
+
+    spinner.succeed('Compilation verified');
+  } catch (error) {
+    spinner.fail('Compilation check failed');
+    if (error instanceof Error) {
+      console.log(chalk.red(`Error: ${error.message}`));
+      console.log(chalk.gray('\nMake sure ember-mcp service is running.'));
+      console.log(chalk.gray('Run: cd D:/NodejsP/ember-mcp && npm start'));
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * 显示设置错误帮助信息
+ *
+ * @param step - 失败的步骤名称
+ */
+function showSetupErrorHelp(step: string): void {
+  console.log(chalk.yellow('\nPlease check:'));
+
+  switch (step) {
+    case 'connect':
+      console.log(chalk.gray('  1. ember-mcp service is running'));
+      console.log(chalk.gray('     cd D:/NodejsP/ember-mcp && npm start'));
+      console.log(chalk.gray('  2. Port 8513 is not blocked by firewall'));
+      console.log(chalk.gray('  3. Unity project is valid'));
+      break;
+    case 'generate_skills':
+      console.log(chalk.gray('  1. Node.js is installed and accessible'));
+      console.log(chalk.gray('  2. skill-generator.js exists in UnityPackage/scripts/'));
+      break;
+    case 'install_skills':
+      console.log(chalk.gray('  1. .claude/skills directory is writable'));
+      console.log(chalk.gray('  2. Skills were generated successfully'));
+      break;
+    default:
+      console.log(chalk.gray('  Check the .ember/setup-result.json file for details'));
+  }
+
+  console.log(chalk.yellow('\nThen run: emberai init'));
 }
 
 /**
@@ -133,23 +239,35 @@ async function initExistingProject(projectPath: string): Promise<void> {
     process.exit(1);
   }
 
+  // Step 4: Execute Ember setup (connect, generate, install)
+  await executeEmberSetupSteps(
+    installs.find((i: UnityInstall) => i.version === unityVersion)!.path,
+    projectPath,
+    spinner
+  );
+
+  // Step 5: Open Unity editor
+  spinner.start('Opening Unity...');
+  try {
+    const selectedInstall = installs.find((i: UnityInstall) => i.version === unityVersion)!;
+    openUnityProject(selectedInstall.path, projectPath);
+    spinner.succeed('Unity is opening');
+  } catch (error) {
+    spinner.warn('Could not open Unity automatically');
+    console.log(chalk.gray('  Please open the project manually in Unity Hub.\n'));
+  }
+
+  // 更新完成提示
   console.log(chalk.green(`
 +------------------------------------------+
 |       ✓ Project Initialized!            |
 +------------------------------------------+
 `));
   console.log(chalk.blue('Next steps:\n'));
-  console.log(chalk.white(`  1. ${chalk.cyan('Ensure ember-mcp gateway is running')}`));
-  console.log(chalk.gray('     cd D:/NodejsP/ember-mcp && npm start\n'));
-  console.log(chalk.white(`  2. ${chalk.cyan('Restart Unity')}`));
-  console.log(chalk.gray('     To load the ember-mcp package\n'));
-  console.log(chalk.white(`  3. ${chalk.cyan('claude')}`));
+  console.log(chalk.white(`  1. ${chalk.cyan('Wait for Unity to finish loading')}`));
+  console.log(chalk.gray('     ember-mcp Unity package will auto-register\n'));
+  console.log(chalk.white(`  2. ${chalk.cyan('claude')}`));
   console.log(chalk.gray('     Start building with AI!\n'));
-
-  if (!emberMcpExists()) {
-    console.log(chalk.yellow('Warning: ember-mcp gateway not found at ' + EMBER_MCP_PATH));
-    console.log(chalk.gray('  Run "npm run build" in ember-mcp directory first.\n'));
-  }
 
   console.log(chalk.gray('─'.repeat(44)));
   console.log(chalk.gray('\nTip: Use /new-game to start building!'));
@@ -280,7 +398,10 @@ async function createNewProject(): Promise<void> {
     process.exit(1);
   }
 
-  // Step 7: Open Unity
+  // Step 7: Execute Ember setup (connect, generate, install)
+  await executeEmberSetupSteps(selectedInstall.path, projectPath, spinner);
+
+  // Step 8: Open Unity editor
   spinner.start('Opening Unity...');
   try {
     openUnityProject(selectedInstall.path, projectPath);
@@ -290,7 +411,7 @@ async function createNewProject(): Promise<void> {
     console.log(chalk.gray('  Please open the project manually in Unity Hub.\n'));
   }
 
-  // Step 8: Check ember-mcp gateway and show final instructions
+  // Step 9: Check ember-mcp gateway and show final instructions
   const gatewayExists = emberMcpExists();
 
   // Success!
@@ -315,7 +436,7 @@ async function createNewProject(): Promise<void> {
   }
 
   console.log(chalk.white(`  3. ${chalk.cyan('Wait for Unity to finish loading')}`));
-  console.log(chalk.gray('     ember-mcp Unity package will auto-register\n'));
+  console.log(chalk.gray('     Skills are already installed and verified\n'));
   console.log(chalk.white(`  4. ${chalk.cyan('claude')}`));
   console.log(chalk.gray('     Start building with AI!\n'));
 
