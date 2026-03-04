@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as http from 'http';
+import { spawn } from 'child_process';
 
 /**
  * Ember Setup 工具函数
@@ -124,22 +125,19 @@ export async function executeUnityBatchSetup(
     console.log(`[Ember] Unity: ${unityPath}`);
     console.log(`[Ember] Project: ${projectPath}`);
 
-    // 动态导入 spawn 以保持一致性
-    import('child_process').then(({ spawn }) => {
-      // 启动 Unity
-      const child = spawn(unityPath, args, {
-        stdio: 'inherit'
-      });
+    // 启动 Unity
+    const child = spawn(unityPath, args, {
+      stdio: 'inherit'
+    });
 
-      child.on('error', (error) => {
-        reject(new EmberSetupError('unity_start', `Failed to start Unity: ${error.message}`));
-      });
+    child.on('error', (error) => {
+      reject(new EmberSetupError('unity_start', `Failed to start Unity: ${error.message}`));
+    });
 
-      // 开始轮询结果文件
-      pollSetupResult(projectPath, TIMEOUTS.resultPolling)
-        .then(resolve)
-        .catch(reject);
-    }).catch(reject);
+    // 开始轮询结果文件
+    pollSetupResult(projectPath, TIMEOUTS.resultPolling)
+      .then(resolve)
+      .catch(reject);
   });
 }
 
@@ -171,6 +169,7 @@ function pollSetupResult(
           resolve(result);
         } catch {
           // 文件可能还在写入中，继续轮询
+          console.log(`[Ember] Waiting for result file to be complete...`);
           setTimeout(poll, TIMEOUTS.pollingInterval);
         }
       } else {
@@ -203,6 +202,12 @@ export async function verifyCompileCheck(): Promise<CompileCheckResult> {
 
     const req = http.request(options, (res) => {
       let data = '';
+
+      // 检查 HTTP 状态码
+      if (res.statusCode !== 200) {
+        reject(new Error(`Compile_Check returned status ${res.statusCode}`));
+        return;
+      }
 
       res.on('data', (chunk) => {
         data += chunk;
