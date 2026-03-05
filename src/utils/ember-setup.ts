@@ -6,19 +6,24 @@ import { spawn } from 'child_process';
 /**
  * Ember Setup 工具函数
  *
- * 用于 Unity CLI 批处理设置和编译检查的工具函数
+ * 用于 Unity CLI 批处理设置的工具函数
+ *
+ * 架构说明 (2026-03-05 更新):
+ * Unity 现在自身启动 HTTP 监听器 (端口 8000-9000)，不再连接外部 MCP 服务器
  *
  * 工作流程:
  * executeUnityBatchSetup()
+ *     ├─> precompileUnityProject()      预编译项目（加载包）
  *     ├─> ensureEmberDirectory()        确保 .ember 目录存在
  *     ├─> 清理旧的结果文件
  *     ├─> spawn Unity 批处理进程
+ *     │     └─> Unity 内部执行:
+ *     │           ├─> WaitForListenerCoroutine()  启动本地 HTTP 监听器
+ *     │           ├─> ExecuteGenerateSkills()     生成技能
+ *     │           ├─> ExecuteInstallSkills()      安装技能
+ *     │           └─> WritePortFile()             写入端口文件
  *     └─> pollSetupResult()             轮询结果文件
  *           └─> 返回 SetupResult
- *
- * verifyCompileCheck()
- *     └─> HTTP POST -> localhost:8513/skill/Compile_Check
- *           └─> 返回 CompileCheckResult
  */
 
 // 超时配置（毫秒）
@@ -29,9 +34,6 @@ export const TIMEOUTS = {
   compileCheck: 30000,     // 编译检查：30秒
   compileWait: 120000,     // 编译等待：2分钟
 };
-
-// MCP 服务端口
-const MCP_PORT = 8513;
 
 /**
  * 设置结果
@@ -93,6 +95,70 @@ export function ensureEmberDirectory(projectPath: string): void {
 }
 
 /**
+ * 创建编译检查标记文件
+ * Unity 编辑器启动后会检测此文件并执行编译检查
+ *
+ * @param projectPath - Unity 项目路径
+ */
+export function createCompileCheckMarker(projectPath: string): void {
+  ensureEmberDirectory(projectPath);
+  const markerPath = path.join(projectPath, '.ember', 'need-compile-check');
+  const timestamp = new Date().toISOString();
+  fs.writeFileSync(markerPath, timestamp);
+  console.log(`[Ember] Created compile check marker: ${markerPath}`);
+}
+
+/**
+ * 预编译 Unity 项目（确保包已加载）
+ *
+ * @param unityPath - Unity 可执行文件路径
+ * @param projectPath - Unity 项目路径
+ * @param timeoutMs - 超时时间（毫秒）
+ */
+async function precompileUnityProject(
+  unityPath: string,
+  projectPath: string,
+  timeoutMs: number = 120000
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log(`[Ember] Precompiling Unity project to load packages...`);
+
+    // 启动 Unity 进行预编译（导入包后退出）
+    const args = [
+      '-batchmode',
+      '-projectPath', projectPath,
+      '-quit'
+    ];
+
+    const child = spawn(unityPath, args, {
+      stdio: 'inherit'
+    });
+
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new EmberSetupError('precompile_timeout', 'Timeout waiting for Unity precompilation'));
+    }, timeoutMs);
+
+    child.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(new EmberSetupError('precompile_start', `Failed to start Unity for precompilation: ${error.message}`));
+    });
+
+    child.on('close', (code) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        console.log(`[Ember] Precompilation completed`);
+        resolve();
+      } else {
+        // 即使返回非0，也继续尝试（可能是某些警告导致的）
+        console.log(`[Ember] Precompilation finished with code ${code}, continuing...`);
+        resolve();
+      }
+    });
+  });
+}
+
+/**
  * 执行 Unity 批处理设置
  *
  * @param unityPath - Unity 可执行文件路径
@@ -103,22 +169,34 @@ export async function executeUnityBatchSetup(
   unityPath: string,
   projectPath: string
 ): Promise<SetupResult> {
-  return new Promise((resolve, reject) => {
-    // 确保目录存在
-    ensureEmberDirectory(projectPath);
+  // 确保目录存在
+  ensureEmberDirectory(projectPath);
 
-    // 清理旧的结果文件
-    const resultPath = path.join(projectPath, '.ember', 'setup-result.json');
-    if (fs.existsSync(resultPath)) {
-      fs.unlinkSync(resultPath);
+  // 清理旧的结果文件
+  const resultPath = path.join(projectPath, '.ember', 'setup-result.json');
+  if (fs.existsSync(resultPath)) {
+    fs.unlinkSync(resultPath);
+  }
+
+  // 步骤1：预编译项目以加载 ember-mcp 包
+  try {
+    await precompileUnityProject(unityPath, projectPath);
+  } catch (error) {
+    if (error instanceof EmberSetupError) {
+      throw error;
     }
+    // 预编译失败，但继续尝试
+    console.log(`[Ember] Precompilation warning: ${error}`);
+  }
 
+  // 步骤2：执行 EmberCLI 设置
+  return new Promise((resolve, reject) => {
     // 构建 Unity 命令参数
+    // 注意：不使用 -quit，让 Unity 在协程完成后通过 EditorApplication.Exit() 自行退出
     const args = [
       '-batchmode',
       '-projectPath', projectPath,
-      '-executeMethod', 'EmberCLI.SetupForCLI',
-      '-quit'
+      '-executeMethod', 'Ember.Editor.CLI.EmberCLI.SetupForCLI'
     ];
 
     console.log(`[Ember] Starting Unity batch setup...`);
@@ -183,15 +261,55 @@ function pollSetupResult(
 }
 
 /**
+ * Unity 端口信息
+ * 从 .ember/mcp-port.json 文件读取
+ */
+export interface McpPortInfo {
+  unityPort: number;
+  instanceId: string;
+  projectName: string;
+}
+
+/**
+ * 读取 Unity HTTP 监听器端口
+ * Unity 启动监听器后会写入 .ember/mcp-port.json 文件
+ *
+ * @param projectPath - Unity 项目路径
+ * @returns 端口号，如果文件不存在则返回 null
+ */
+export function readUnityPort(projectPath: string): number | null {
+  const portFile = path.join(projectPath, '.ember', 'mcp-port.json');
+  if (fs.existsSync(portFile)) {
+    try {
+      const content = fs.readFileSync(portFile, 'utf-8');
+      const info: McpPortInfo = JSON.parse(content);
+      return info.unityPort;
+    } catch (error) {
+      console.log(`[Ember] Failed to read port file: ${error}`);
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * 调用 Compile_Check API
  *
+ * @param projectPath - Unity 项目路径，用于读取端口文件
  * @returns 编译检查结果
  */
-export async function verifyCompileCheck(): Promise<CompileCheckResult> {
+export async function verifyCompileCheck(projectPath: string): Promise<CompileCheckResult> {
+  // 从 .ember/mcp-port.json 读取 Unity 监听端口
+  const unityPort = readUnityPort(projectPath);
+
+  if (!unityPort) {
+    throw new Error('Unity port file not found. Make sure Unity HTTP listener is running.');
+  }
+
   return new Promise((resolve, reject) => {
     const options = {
       hostname: 'localhost',
-      port: MCP_PORT,
+      port: unityPort,
       path: '/skill/Compile_Check',
       method: 'POST',
       headers: {
@@ -224,7 +342,7 @@ export async function verifyCompileCheck(): Promise<CompileCheckResult> {
     });
 
     req.on('error', (error) => {
-      reject(new Error(`Compile_Check request failed: ${error.message}. Make sure ember-mcp is running.`));
+      reject(new Error(`Compile_Check request failed: ${error.message}. Make sure Unity HTTP listener is running on port ${unityPort}.`));
     });
 
     req.on('timeout', () => {
@@ -240,14 +358,18 @@ export async function verifyCompileCheck(): Promise<CompileCheckResult> {
 /**
  * 等待编译完成
  *
+ * @param projectPath - Unity 项目路径
  * @param maxWaitMs - 最大等待时间（毫秒）
  * @returns 编译检查结果
  */
-export async function waitForCompilation(maxWaitMs: number = TIMEOUTS.compileWait): Promise<CompileCheckResult> {
+export async function waitForCompilation(
+  projectPath: string,
+  maxWaitMs: number = TIMEOUTS.compileWait
+): Promise<CompileCheckResult> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < maxWaitMs) {
-    const result = await verifyCompileCheck();
+    const result = await verifyCompileCheck(projectPath);
 
     if (!result.isCompiling) {
       return result;
