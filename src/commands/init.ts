@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import ora, { Ora } from 'ora';
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process';
 import {
   findUnityInstalls,
   createUnityProject,
@@ -26,6 +27,48 @@ import {
  */
 export function isValidProjectName(name: string): boolean {
   return /^[a-zA-Z0-9_-]+$/.test(name);
+}
+
+/**
+ * 使用默认文本编辑器打开文件
+ * @param filePath - 要打开的文件路径
+ */
+function openFileInEditor(filePath: string): void {
+  try {
+    const platform = process.platform;
+    let command: string;
+
+    if (platform === 'win32') {
+      // Windows: 使用 start 命令打开文件（会使用关联的程序）
+      command = `start "" "${filePath}"`;
+    } else if (platform === 'darwin') {
+      // macOS: 使用 open 命令
+      command = `open "${filePath}"`;
+    } else {
+      // Linux: 使用 xdg-open 或直接用编辑器
+      command = `xdg-open "${filePath}" || sensible-editor "${filePath}" || code "${filePath}"`;
+    }
+
+    exec(command, (error) => {
+      if (error) {
+        console.log(chalk.gray(`  Could not open file automatically. Please open manually: ${filePath}`));
+      }
+    });
+  } catch (error) {
+    console.log(chalk.gray(`  Could not open file: ${error}`));
+  }
+}
+
+/**
+ * 打开项目中的 README.md 文件
+ * @param projectPath - 项目路径
+ */
+function openReadme(projectPath: string): void {
+  const readmePath = path.join(projectPath, 'readme.md');
+  if (fs.existsSync(readmePath)) {
+    console.log(chalk.gray(`  Opening README.md...`));
+    openFileInEditor(readmePath);
+  }
 }
 
 /**
@@ -175,6 +218,9 @@ async function initExistingProject(projectPath: string): Promise<void> {
       await copyTemplateAsync(projectPath);
       createEditorScripts(projectPath);
       spinner.succeed('Claude commands installed');
+
+      // 打开 README.md 文件
+      openReadme(projectPath);
     } catch (error) {
       spinner.fail('Failed to install Claude commands');
       if (error instanceof Error) {
@@ -368,6 +414,9 @@ async function createNewProject(options: InitOptions = {}): Promise<void> {
     await copyTemplateAsync(projectPath);
     createEditorScripts(projectPath);
     spinner.succeed('Claude commands installed');
+
+    // 打开 README.md 文件
+    openReadme(projectPath);
   } catch (error) {
     spinner.fail('Failed to install Claude commands');
     if (error instanceof Error) {
@@ -453,7 +502,7 @@ async function createNewProject(options: InitOptions = {}): Promise<void> {
   console.log(chalk.gray('     Start building with AI!\n'));
 
   console.log(chalk.gray('─'.repeat(44)));
-  console.log(chalk.gray('\nTip: Use /new-game to start building!'));
+  console.log(chalk.gray('\nTip: Use /new-game to start build a game'));
   console.log(chalk.gray('Example: /new-game space shooter where you dodge asteroids\n'));
 }
 
